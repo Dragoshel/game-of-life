@@ -4,12 +4,12 @@
 #include <time.h>
 
 #define HEIGHT 1000
-#define WIDTH 1000
+#define WIDTH 800
 
-#define BOARD_HEIGHT 1000
-#define BOARD_WIDTH 1000
+#define BOARD_HEIGHT 900
+#define BOARD_WIDTH 700
 
-#define RECT_SIZE 5
+#define RECT_SIZE 7
 
 int grid[BOARD_HEIGHT][BOARD_WIDTH] = {0};
 
@@ -53,13 +53,12 @@ int rules(int i, int j, int height, int width, int **grid)
     for (int dx = -1; dx <= 1; dx++) {
         for (int dy = -1; dy <= 1; dy++) {
             if (dx == 0 && dy == 0) {
-                continue;  // Skip the current cell
+                continue;
             }
 
             int neighborX = i + dx;
             int neighborY = j + dy;
 
-            // Check if the neighbor cell is within the grid boundaries
             if (neighborX >= 0 && neighborX < height && neighborY >= 0 && neighborY < width) {
                 live_neighbors += grid[neighborX][neighborY];
             }
@@ -78,18 +77,16 @@ void transition(int height, int width, int **old_grid, int **new_grid)
 			int live_neighbors = rules(i, j, height, width, old_grid);
 
             if (old_grid[i][j] == 1) {
-                // Cell is alive
                 if (live_neighbors < 2 || live_neighbors > 3) {
-                    new_grid[i][j] = 0;  // Cell dies due to underpopulation or overpopulation
+                    new_grid[i][j] = 0;
                 } else {
-                    new_grid[i][j] = 1;  // Cell stays alive
+                    new_grid[i][j] = 1;
                 }
             } else {
-                // Cell is dead
                 if (live_neighbors == 3) {
-                    new_grid[i][j] = 1;  // Cell becomes alive due to reproduction
+                    new_grid[i][j] = 1;
                 } else {
-                    new_grid[i][j] = 0;  // Cell remains dead
+                    new_grid[i][j] = 0;
                 }
             }
 		}
@@ -140,13 +137,10 @@ void draw(int height, int width, int **grid)
 				top.y + j * RECT_SIZE
 			};
 
-			if (grid[i][j])
-			{
+			if (grid[i][j]) {
 				DrawRectangleV(pos, size, BLACK);
-			}
-			else
-			{
-				DrawRectangleV(pos, size, RAYWHITE);
+			} else {
+				DrawRectangleLines(pos.x, pos.y, size.x, size.y, LIGHTGRAY);
 			}
 		}
 	}
@@ -160,6 +154,8 @@ int main(void)
 	int **old_grid = rand_grid(grid_height, grid_width);
 	int **new_grid = copy(grid_height, grid_width, old_grid);
 	int **swap = copy(grid_height, grid_width, old_grid);
+
+	double speed = 0.05;
 
     InitWindow(HEIGHT, WIDTH, "raylib [core] example - basic window");
 
@@ -175,7 +171,13 @@ int main(void)
 
 			swap_grid(grid_height, grid_width, old_grid, new_grid, swap);
 
-			WaitTime(0.06);
+			if (IsKeyPressed(KEY_RIGHT)) {
+				speed += 0.01;
+			} else if (IsKeyPressed(KEY_LEFT) && speed > 0) {
+				speed -= 0.01;
+			}
+
+			WaitTime(speed);
 
         EndDrawing();
     }
