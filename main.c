@@ -1,188 +1,127 @@
-#include <stdlib.h>
-#include <stdio.h>
 #include <raylib.h>
-#include <time.h>
+#include <stdio.h>
 
-#define HEIGHT 1000
-#define WIDTH 800
+#include "util.c"
 
-#define BOARD_HEIGHT 900
-#define BOARD_WIDTH 700
+#define WINDOW_HEIGHT 1000
+#define WINDOW_WIDTH 800
+
+#define BOARD_HEIGHT (WINDOW_HEIGHT - 100)
+#define BOARD_WIDTH (WINDOW_WIDTH - 100)
 
 #define RECT_SIZE 7
 
 int grid[BOARD_HEIGHT][BOARD_WIDTH] = {0};
 
-Vector2 top =
-{
-	(HEIGHT - BOARD_HEIGHT) / 2,
-	(WIDTH - BOARD_WIDTH) / 2
-};
+Vector2 top = {(float)(WINDOW_HEIGHT - BOARD_HEIGHT) / 2,
+               (float)(WINDOW_WIDTH - BOARD_WIDTH) / 2};
 
-Vector2 size =
-{
-	RECT_SIZE,
-	RECT_SIZE
-};
+Vector2 size = {RECT_SIZE, RECT_SIZE};
 
-int **rand_grid(int height, int width)
-{
-	srand(time(NULL));
+int rules(int i, int j, int h, int w, int **grid) {
+  int live_neighbors = 0;
 
-	int **grid = (int **)malloc(sizeof(int *) * (height + 2));
+  for (int dx = -1; dx <= 1; dx++) {
+    for (int dy = -1; dy <= 1; dy++) {
+      if (dx == 0 && dy == 0) {
+        continue;
+      }
 
-	for (int i = 0; i < height; i++)
-	{
-		int *row = (int *)malloc(sizeof(int) * (width + 2));
+      int neighborX = i + dx;
+      int neighborY = j + dy;
 
-		for (int j = 0; j < width; j++)
-		{
-			row[j] = rand() % 10 % 2;
-		}
+      if (neighborX >= 0 && neighborX < h && neighborY >= 0 && neighborY < w) {
+        live_neighbors += grid[neighborX][neighborY];
+      }
+    }
+  }
 
-		grid[i] = row;
-	}
-
-	return grid;
+  return live_neighbors;
 }
 
-int rules(int i, int j, int height, int width, int **grid)
-{
-    int live_neighbors = 0;
+void transition(int h, int w, int **grid, int **next_grid) {
+  for (int i = 0; i < h; i++) {
+    for (int j = 0; j < w; j++) {
+      int live_neighbors = rules(i, j, h, w, grid);
 
-    for (int dx = -1; dx <= 1; dx++) {
-        for (int dy = -1; dy <= 1; dy++) {
-            if (dx == 0 && dy == 0) {
-                continue;
-            }
-
-            int neighborX = i + dx;
-            int neighborY = j + dy;
-
-            if (neighborX >= 0 && neighborX < height && neighborY >= 0 && neighborY < width) {
-                live_neighbors += grid[neighborX][neighborY];
-            }
+      if (grid[i][j] == 1) {
+        if (live_neighbors < 2 || live_neighbors > 3) {
+          next_grid[i][j] = 0;
+        } else {
+          next_grid[i][j] = 1;
         }
+      } else {
+        if (live_neighbors == 3) {
+          next_grid[i][j] = 1;
+        } else {
+          next_grid[i][j] = 0;
+        }
+      }
     }
+  }
 
-	return live_neighbors;	
+  swap(h, w, grid, next_grid);
 }
 
-void transition(int height, int width, int **old_grid, int **new_grid)
-{
-	for (int i = 0; i < height; i++)
-	{
-		for (int j = 0; j < width; j++)
-		{
-			int live_neighbors = rules(i, j, height, width, old_grid);
+void draw(int h, int w, int **grid) {
+  for (int i = 0; i < h; i++) {
+    for (int j = 0; j < w; j++) {
+      Vector2 pos = {top.x + i * RECT_SIZE, top.y + j * RECT_SIZE};
 
-            if (old_grid[i][j] == 1) {
-                if (live_neighbors < 2 || live_neighbors > 3) {
-                    new_grid[i][j] = 0;
-                } else {
-                    new_grid[i][j] = 1;
-                }
-            } else {
-                if (live_neighbors == 3) {
-                    new_grid[i][j] = 1;
-                } else {
-                    new_grid[i][j] = 0;
-                }
-            }
-		}
-	}
-}
-
-void swap_grid(int height, int width, int **old_grid, int **new_grid, int**swap)
-{
-	for (int i = 0; i < height; i++)
-	{
-		for (int j = 0; j < width; j++)
-		{
-			swap[i][j] = old_grid[i][j];
-			old_grid[i][j] = new_grid[i][j];
-			new_grid[i][j] = swap[i][j];
-		}
-	}
-}
-
-int **copy(int height, int width, int **grid)
-{
-	int **new_grid = (int **)malloc(sizeof(int *) * (height + 2));
-
-	for (int i = 0; i < height; i++)
-	{
-		int *row = (int *)malloc(sizeof(int) * (width + 2));
-
-		for (int j = 0; j < width; j++)
-		{
-			row[j] = grid[i][j];
-		}
-
-		new_grid[i] = row;
-	}
-
-	return new_grid;
-}
-
-void draw(int height, int width, int **grid)
-{
-	for (int i = 0; i < height; i++)
-	{
-		for (int j = 0; j < width; j++)
-		{
-			Vector2 pos =
-			{
-				top.x + i * RECT_SIZE,
-				top.y + j * RECT_SIZE
-			};
-
-			if (grid[i][j]) {
-				DrawRectangleV(pos, size, BLACK);
-			} else {
-				DrawRectangleLines(pos.x, pos.y, size.x, size.y, LIGHTGRAY);
-			}
-		}
-	}
-}
-
-int main(void)
-{
-	int grid_height = BOARD_HEIGHT / RECT_SIZE;
-	int grid_width = BOARD_WIDTH / RECT_SIZE;
-
-	int **old_grid = rand_grid(grid_height, grid_width);
-	int **new_grid = copy(grid_height, grid_width, old_grid);
-	int **swap = copy(grid_height, grid_width, old_grid);
-
-	double speed = 0.05;
-
-    InitWindow(HEIGHT, WIDTH, "raylib [core] example - basic window");
-
-    while (!WindowShouldClose())
-    {
-        BeginDrawing();
-
-            ClearBackground(RAYWHITE);
-
-			draw(grid_height, grid_width, old_grid);
-
-			transition(grid_height, grid_width, old_grid, new_grid);
-
-			swap_grid(grid_height, grid_width, old_grid, new_grid, swap);
-
-			if (IsKeyPressed(KEY_RIGHT)) {
-				speed += 0.01;
-			} else if (IsKeyPressed(KEY_LEFT) && speed > 0) {
-				speed -= 0.01;
-			}
-
-			WaitTime(speed);
-
-        EndDrawing();
+      if (grid[i][j]) {
+        DrawRectangleV(pos, size, BLACK);
+      } else {
+        DrawRectangleLines(pos.x, pos.y, size.x, size.y, LIGHTGRAY);
+      }
     }
+  }
+}
 
-    CloseWindow();
+double speed_input(double current_speed) {
+  if (IsKeyPressed(KEY_RIGHT)) {
+    current_speed += 0.01;
+  } else if (IsKeyPressed(KEY_LEFT) && current_speed > 0) {
+    current_speed -= 0.01;
+  }
 
-    return 0;
+  return current_speed;
+}
+
+int main(void) {
+  double speed = 0.05;
+
+  int h = BOARD_HEIGHT / RECT_SIZE;
+  int w = BOARD_WIDTH / RECT_SIZE;
+
+  int **grid = rng(h, w);
+  int **next_grid = clone(h, w, grid);
+
+  InitWindow(WINDOW_HEIGHT, WINDOW_WIDTH, "Game of Live - Raylib");
+
+  while (!WindowShouldClose()) {
+    BeginDrawing();
+
+    ClearBackground(RAYWHITE);
+
+    draw(h, w, grid);
+
+    transition(h, w, grid, next_grid);
+
+    speed = speed_input(speed);
+
+	char text_speed[100];
+    sprintf(text_speed, "%f", speed);
+
+	DrawFPS(10, 10);
+
+	DrawText(text_speed, 820, 10, 24, BLACK);
+
+    WaitTime(speed);
+
+    EndDrawing();
+  }
+
+  CloseWindow();
+
+  return 0;
 }
